@@ -51,13 +51,12 @@ function parseResponse(wmpString) {
 }
 
 module.exports = {
-    connect: function(ip, connectcallback) {
+    connect: function(ip) /* Promise(mac) */ {
         
         var nextCallback = null;
         var client = new net.Socket();
+        var mac;
         
-        client.connect(3310, ip, connectcallback);
-    
         client.on('data', function(data){
             var wmpdata = parseResponse(data.toString())
 
@@ -84,12 +83,12 @@ module.exports = {
             }
         };
         
-        var id = function(callback) {
-            sendCmd('ID', callback)
+        var id = function() {
+            return sendCmd('ID')
         };
         
-        var info = function(callback) {
-            sendCmd('INFO', callback)
+        var info = function() {
+            return sendCmd('INFO')
         };
         
         var get = function(feature) {
@@ -97,22 +96,35 @@ module.exports = {
             sendCmd("GET,1:" + feature);
         };
         
-        var set = function(callback) {
-        
+        var set = function(feature, value) {
+            //todo: sanitise feature & value params
+            sendCmd("SET,1:" + feature + "," + value).then(function(data){
+                if(data.type != "ACK")
+                    console.error("Received non-ack message from set command: " + JSON.stringify(data))
+            });
         };
         
-        var sendCmd = function(cmd, callback) {
-            if(callback)
-                nextCallback = callback;
-
-            client.write(cmd + '\n');
+        var sendCmd = function(cmd) {
+            return new Promise(function(resolve, reject){
+                nextCallback = resolve;
+                client.write(cmd + '\n');
+            })
         };
         
-        return {
-            on: on,
-            id: id,
-            info: info,
-            get: get
-        }
+        return new Promise(function(resolve, reject) {
+            client.connect(3310, ip, function(){
+                id().then(function(data){
+                    mac = data.mac;
+                    resolve({
+                        on: on,
+                        id: id,
+                        info: info,
+                        get: get,
+                        set: set,
+                        mac: mac
+                    });
+                })
+            });
+        });
     }
 }

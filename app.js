@@ -5,7 +5,7 @@ var MQTT_TOPIC = "/hvac/intesis"
 var MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 var MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
-var INTESIS_IP = "192.168.1.231"
+var INTESIS_IPS = ["192.168.1.231"]
 
 var winston = require('winston')
 
@@ -25,13 +25,9 @@ const logger = require('winston').createLogger({
 var mqtt = require('mqtt')
 var wmp = require('./wmp');
 
+//todo detect connection failures
 var mqttClient = mqtt.connect(MQTT_URL)
 
-//todo detect connection failures
-
-var wmpclient = wmp.connect(INTESIS_IP, function(data){
-    logger.info("Connected to WMP");
-})
 
 mqttClient.on('error', function(error){
     logger.error("Error from mqtt broker: %v", error)
@@ -41,63 +37,91 @@ mqttClient.on('connect', function(connack){
     logger.info("Connected to mqtt broker")
 });
 
-wmpclient.on('close', function() {
-	logger.warn('WMP Connection closed');
-});
-
 var runWMP2Mqtt = function(mqttClient, wmpclient){
     wmpclient.on('update', function(data){
         logger.debug('Sending to MQTT: ' + JSON.stringify(data));
-        mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
+        mqttClient.publish(getTopic(wmpclient.mac, data), data.value)
     });
 }
 
-var parseCommand = function(cmd) {
+var getTopic = function(mac, data) {
+    return MQTT_STATE_TOPIC + "/" + mac + "/SETTINGS/" + data.feature
+}
+
+var parseCommand = function(topic, payload) {
+    // format of commands is /<topic>/<mac>/<area>/<feature> payload (for set only is value
     var rv = {};
-    var parts = cmd.split(":");
+    //strip prefix and split
+    var parts = topic.substr(MQTT_COMMAND_TOPIC.length).replace(/^\/+/g, '').split("/");
 
-    rv['command'] = parts[0];
+    rv['mac'] = parts[0];
 
-    if(parts.length > 1) {
-        var params = parts[1].split("=");
-
-        rv['feature'] = params[0];
-        if(params.length > 1) {
-            rv['value'] = params[1];
-        }
+    switch (parts[1]) {
+        case "SETTINGS":
+            rv['feature'] = parts[2]
+            if (payload && payload.length > 0) {
+                rv['command'] = "SET";
+                rv['value'] = payload;
+            } else {
+                rv['command'] = "GET";
+            }
+            break;
+        default:
+            rv['command'] = parts[1];
     }
 
     return rv;
 }
 
-var runMqtt2WMP = function(mqttClient, wmpclient){
-    mqttClient.subscribe(MQTT_COMMAND_TOPIC)
+var runMqtt2WMP = function(mqttClient, wmpclientMap){
+    mqttClient.subscribe(MQTT_COMMAND_TOPIC + "/#")
 
-    // format of commands is <command>:<feature>=<value>
     mqttClient.on('message', function (topic, message) {
-        var cmd = parseCommand(message.toString());
+        var cmd = parseCommand(topic, message);
+        var wmpclient = wmpclientMap[cmd.mac];
+
+        if(!wmpclient) {
+            logger.warn("Cannot find WMP server with MAC " + cmd.mac + "! Ignoring...")
+            return;
+        }
+
         switch(cmd.command) {
             case "ID":
-                wmpclient.id(function(data){
+                wmpclient.id().then(function(data){
                     logger.debug("published to mqtt: %", JSON.stringify(data))
                     mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
                 });
                 break;
             case "INFO":
-                wmpclient.info(function(data){
+                wmpclient.info().then(function(data){
                     logger.debug("published to mqtt: %", JSON.stringify(data))
                     mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
                 });
             break;
             case "GET":
-                wmpclient.get(cmd.feature, function(data){
-                    logger.debug("published to mqtt: %", JSON.stringify(data))
-                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
-                });
-        break;
+                wmpclient.get(cmd.feature);
+            break;
+            case "SET":
+                wmpclient.set(cmd.feature, cmd.value);
+            break;
         }
     })
 }
 
-runWMP2Mqtt(mqttClient, wmpclient)
-runMqtt2WMP(mqttClient, wmpclient)
+var macToClient = {};
+
+Promise.all(INTESIS_IPS.map(function(ip){
+    return wmp.connect(ip).then(function(wmpclient){
+        logger.info("Connected to WMP at IP " + ip + " with MAC " + wmpclient.mac);
+    
+        wmpclient.on('close', function() {
+            logger.warn('WMP Connection closed');
+        });
+
+        macToClient[wmpclient.mac] = wmpclient
+    
+        runWMP2Mqtt(mqttClient, wmpclient)
+    });
+})).then(function(){
+    runMqtt2WMP(mqttClient, macToClient)
+});

@@ -1,14 +1,24 @@
 
 let net = require('net');
 
-function parseResponse(wmpString) {
+function parseResponseLines(wmpString) {
     var lines = wmpString.split('\r\n');
 
     while(lines[lines.length-1].length == 0) {
         lines.pop();
     }
 
-    var segments = lines[0].split(":");
+    let rv = [];
+
+    for(let i = 0; i < lines.length; i++) {
+        rv.push(parseResponseLine(lines[i]))
+    }
+
+    return rv;
+}
+
+function parseResponseLine(wmpLine) {
+    var segments = wmpLine.split(":");
     var type = segments[0].split(",")[0];
 
     var rv = {
@@ -16,6 +26,8 @@ function parseResponse(wmpString) {
     };
 
     switch(type) {
+        case "ACK":
+            break;
         case "ID":
             var parts = segments[1].split(",");
             Object.assign(rv, {
@@ -27,25 +39,13 @@ function parseResponse(wmpString) {
                 "rssi": parts[5]
             });
             break;
-        case "INFO":
-            //for some reason this response spans lines
-            Object.assign(rv, {
-                "runversion": lines[0].split(",")[1],
-                "cfgversion": lines[1].split(",")[1],
-                "deviceinfo": lines[2].split(",")[1],
-                "hash": lines[3].split(",")[1]
-            });
-            break;
-        case "CHN":
+        default:
             var parts = segments[1].split(",");
             Object.assign(rv, {
                 "feature": parts[0],
                 "value": parts[1]
             })
-    }
-
-    if (type != "INFO" && lines.length > 1) {
-        console.warn("Extraneous lines detected and ignored! " + wmpString)
+            break;
     }
 
     return rv;
@@ -59,14 +59,18 @@ module.exports = {
         var mac;
         
         client.on('data', function(data){
-            var wmpdata = parseResponse(data.toString())
+            console.log("Received: " + data.toString())
 
-            if (wmpdata.type != "CHN") {
-                if (nextCallback === null) {
-                    console.error("Received message without callback: " + wmpdata)
-                } else {
-                    nextCallback(wmpdata);
-                    nextCallback = null;
+            var wmpdata = parseResponseLines(data.toString())
+
+            for(let i = 0; i < wmpdata.length; i++) {
+                if (wmpdata[i].type != "CHN") {
+                    if (nextCallback === null) {
+                        console.error("Received message without callback: " + wmpdata[i])
+                    } else {
+                        nextCallback(wmpdata[i]);
+                        nextCallback = null;
+                    }
                 }
             }
         });
@@ -74,9 +78,11 @@ module.exports = {
         var on = function(event, callback) {
             if (event == "update") {
                 client.on('data', function(data){
-                    var wmpdata = parseResponse(data.toString())
-                    if (wmpdata.type == "CHN") {
-                        callback(wmpdata);
+                    var wmpdata = parseResponseLines(data.toString())
+                    for(let i = 0; i < wmpdata.length; i++) {
+                        if (wmpdata[i].type == "CHN") {
+                            callback(wmpdata[i]);
+                        }
                     }
                 });
             } else if (event == 'close') {
@@ -99,6 +105,11 @@ module.exports = {
         
         var set = function(feature, value) {
             //todo: sanitise feature & value params
+
+            //convert decimal to 10x temp numbers
+            if(feature.toUpperCase() == "SETPTEMP")
+                value = value * 10;
+
             sendCmd("SET,1:" + feature + "," + value).then(function(data){
                 if(data.type != "ACK")
                     console.error("Received non-ack message from set command: " + JSON.stringify(data))
@@ -111,12 +122,6 @@ module.exports = {
                 client.write(cmd + '\n');
             })
         };
-
-        let options = { 
-            'host' : ip, 
-            'port' : 3310,
-            'retryTime' : 1000 // 1s for every retry
-        }
     
         //reconnect on close
         client.on('close', function(e) {

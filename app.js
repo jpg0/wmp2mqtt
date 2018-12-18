@@ -27,12 +27,9 @@ var wmp = require('./wmp');
 
 //todo detect connection failures
 var mqttClient = mqtt.connect(MQTT_URL)
-
-
 mqttClient.on('error', function(error){
     logger.error("Error from mqtt broker: %v", error)
 });
-
 mqttClient.on('connect', function(connack){
     logger.info("Connected to mqtt broker")
 });
@@ -40,12 +37,8 @@ mqttClient.on('connect', function(connack){
 var runWMP2Mqtt = function(mqttClient, wmpclient){
     wmpclient.on('update', function(data){
         logger.debug('Sending to MQTT: ' + JSON.stringify(data));
-        mqttClient.publish(getTopic(wmpclient.mac, data), data.value)
+        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature, data.value.toString())
     });
-}
-
-var getTopic = function(mac, data) {
-    return MQTT_STATE_TOPIC + "/" + mac + "/SETTINGS/" + data.feature
 }
 
 var parseCommand = function(topic, payload) {
@@ -56,7 +49,7 @@ var parseCommand = function(topic, payload) {
 
     rv['mac'] = parts[0];
 
-    switch (parts[1]) {
+    switch (parts[1].toUpperCase()) {
         case "SETTINGS":
             rv['feature'] = parts[2]
             if (payload && payload.length > 0) {

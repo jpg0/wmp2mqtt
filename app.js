@@ -5,7 +5,7 @@ var MQTT_TOPIC = "/hvac/intesis"
 var MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 var MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
-var INTESIS_IPS = ["192.168.1.231"]
+const intesis_ips = process.argv.slice(2).split(",")
 
 var winston = require('winston')
 
@@ -103,7 +103,7 @@ var runMqtt2WMP = function(mqttClient, wmpclientMap){
 
 var macToClient = {};
 
-Promise.all(INTESIS_IPS.map(function(ip){
+Promise.all(intesis_ips.map(function(ip){
     return wmp.connect(ip).then(function(wmpclient){
         logger.info("Connected to WMP at IP " + ip + " with MAC " + wmpclient.mac);
     

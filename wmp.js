@@ -59,7 +59,6 @@ module.exports = {
         var mac;
         
         client.on('data', function(data){
-            console.log("Received: " + data.toString())
 
             var wmpdata = parseResponseLines(data.toString())
 

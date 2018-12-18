@@ -5,7 +5,7 @@ var MQTT_TOPIC = "/hvac/intesis"
 var MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 var MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
-const intesis_ips = process.argv.slice(2).split(",")
+const intesis_ips = process.argv[2].split(",")
 
 var winston = require('winston')
 

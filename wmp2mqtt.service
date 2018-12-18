@@ -1,0 +1,12 @@
+[Unit]
+Description=WMP-to-MQTT Bridge Service
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/wmp2mqtt
+ExecStart=/usr/bin/node app.js
+Restart=on-failure
+User=openhabian
+
+[Install]
+WantedBy=multi-user.target

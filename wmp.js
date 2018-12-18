@@ -1,4 +1,5 @@
-var net = require('net');
+
+let net = require('net');
 
 function parseResponse(wmpString) {
     var lines = wmpString.split('\r\n');
@@ -68,7 +69,7 @@ module.exports = {
                     nextCallback = null;
                 }
             }
-        })
+        });
         
         var on = function(event, callback) {
             if (event == "update") {
@@ -110,6 +111,19 @@ module.exports = {
                 client.write(cmd + '\n');
             })
         };
+
+        let options = { 
+            'host' : ip, 
+            'port' : 3310,
+            'retryTime' : 1000 // 1s for every retry
+        }
+    
+        //reconnect on close
+        client.on('close', function(e) {
+            client.setTimeout(5000, function() {
+                client.connect(3310, ip);
+            })
+        });
         
         return new Promise(function(resolve, reject) {
             client.connect(3310, ip, function(){

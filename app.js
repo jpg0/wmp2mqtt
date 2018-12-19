@@ -1,11 +1,16 @@
 'use strict'
 
-var MQTT_URL = "mqtt://homectl.local/"
 var MQTT_TOPIC = "/hvac/intesis"
 var MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 var MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
-const intesis_ips = process.argv[2].split(",")
+var argv = require('yargs')
+    .usage('Usage: $0 --mqtt [mqtt url] --wmp [ip address(,ip address,...)]')
+    .demandOption(['mqtt','wmp'])
+    .argv;
+
+const intesis_ips = argv.wmp.split(',')
+const mqtt_url = argv.mqtt;
 
 var winston = require('winston')
 
@@ -26,7 +31,7 @@ var mqtt = require('mqtt')
 var wmp = require('./wmp');
 
 //todo detect connection failures
-var mqttClient = mqtt.connect(MQTT_URL)
+var mqttClient = mqtt.connect(mqtt_url)
 mqttClient.on('error', function(error){
     logger.error("Error from mqtt broker: %v", error)
 });

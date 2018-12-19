@@ -12,7 +12,16 @@ npm install
 ```
 
 # Usage
-`node app.js \<mqtt ip> <intesis ip(s)>`
+`node app.js --mqtt [mqtt url] --wmp [ip address(,ip address,...)]`
+
+Updates will be provided in the MQTT topic: `/stat/hvac/intesis/[Intesis MAC Address]/settings/[feature]` with the payload as the value.
+For example: `/stat/hvac/intesis/00000000/settings/ONOFF` with payload as `OFF`
+
+Commands can be sent via the topic: `/cmnd/hvac/intesis/[Intesis MAC Address]/settings/[feature]` with the payload as the value to set to.
+For example: `/cmnd/hvac/intesis/00000000/settings/MODE` with payload as `HEAT`
+
+Note that sending a command with no payload will request the current state is sent as au update.
+
 
 # Notes
 

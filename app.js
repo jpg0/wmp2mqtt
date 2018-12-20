@@ -5,11 +5,16 @@ var MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 var MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
 var argv = require('yargs')
-    .usage('Usage: $0 --mqtt [mqtt url] --wmp [ip address(,ip address,...)]')
-    .demandOption(['mqtt','wmp'])
+    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--wmp ip address(,ip address,...)]')
+    .demandOption(['mqtt'])
     .argv;
 
-const intesis_ips = argv.wmp.split(',')
+let supplied_intesis_ips = [];
+
+if(argv.wmp) {
+    supplied_intesis_ips = argv.wmp.split(',');
+}
+
 const mqtt_url = argv.mqtt;
 
 var winston = require('winston')
@@ -108,8 +113,9 @@ var runMqtt2WMP = function(mqttClient, wmpclientMap){
 
 var macToClient = {};
 
-Promise.all(intesis_ips.map(function(ip){
-    return wmp.connect(ip).then(function(wmpclient){
+let wmpConnect = function(ip) {
+    //todo: prevent duplicate registrations
+    wmp.connect(ip).then(function(wmpclient){
         logger.info("Connected to WMP at IP " + ip + " with MAC " + wmpclient.mac);
     
         wmpclient.on('close', function() {
@@ -119,7 +125,13 @@ Promise.all(intesis_ips.map(function(ip){
         macToClient[wmpclient.mac] = wmpclient
     
         runWMP2Mqtt(mqttClient, wmpclient)
-    });
-})).then(function(){
-    runMqtt2WMP(mqttClient, macToClient)
+})};
+
+supplied_intesis_ips.map(function(ip){
+    wmpConnect(ip);
 });
+wmp.discover(1000, function(data){
+    wmpConnect(data.ip);
+});
+
+runMqtt2WMP(mqttClient, macToClient);

@@ -1,5 +1,6 @@
 
 let net = require('net');
+var debug = require('debug')('wmp')
 
 function parseResponseLines(wmpString) {
     var lines = wmpString.split('\r\n');
@@ -51,7 +52,41 @@ function parseResponseLine(wmpLine) {
     return rv;
 }
 
+const DISCOVER_PREFIX = "DISCOVER:"
+
 module.exports = {
+    discover: function(timeout, callback) {
+        var dgram = require('dgram');
+
+        var message = Buffer.from("DISCOVER\r\n");
+        var client = dgram.createSocket("udp4");
+        client.bind(3310);
+        client.on("message", function (msg, rinfo) {
+            debug("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+            if (msg.indexOf(DISCOVER_PREFIX) === 0) {
+                let parts = msg.toString().substr(DISCOVER_PREFIX.length).split(",");
+                callback({
+                    model: parts[0],
+                    mac: parts[1],
+                    ip: parts[2],
+                    protocol: parts[3],
+                    version: parts[4],
+                    rssi: parts[5]
+                });
+            }
+        });
+         
+        client.on("listening", function () {
+            var address = client.address();
+            debug("server listening " + address.address + ":" + address.port);
+            client.setBroadcast(true);
+            client.send(message, 0, message.length, 3310, "255.255.255.255");
+        });
+
+        setTimeout(function(){
+            client.close();
+        }, timeout);
+    },
     connect: function(ip) /* Promise(mac) */ {
         
         var nextCallback = null;

@@ -1,17 +1,17 @@
 
-let net = require('net');
-var debug = require('debug')('wmp')
+const net = require('net');
+const debug = require('debug')('wmp')
 
 function parseResponseLines(wmpString) {
-    var lines = wmpString.split('\r\n');
+    let lines = wmpString.split('\r\n');
 
-    while(lines[lines.length-1].length == 0) {
+    while (lines[lines.length - 1].length == 0) {
         lines.pop();
     }
 
     let rv = [];
 
-    for(let i = 0; i < lines.length; i++) {
+    for (let i = 0; i < lines.length; i++) {
         rv.push(parseResponseLine(lines[i]))
     }
 
@@ -19,18 +19,18 @@ function parseResponseLines(wmpString) {
 }
 
 function parseResponseLine(wmpLine) {
-    var segments = wmpLine.split(":");
-    var type = segments[0].split(",")[0];
+    let segments = wmpLine.split(":");
+    let type = segments[0].split(",")[0];
 
-    var rv = {
+    let rv = {
         type: type
     };
 
-    switch(type) {
+    switch (type) {
         case "ACK":
             break;
         case "ID":
-            var parts = segments[1].split(",");
+            let parts = segments[1].split(",");
             Object.assign(rv, {
                 "model": parts[0],
                 "mac": parts[1],
@@ -41,7 +41,7 @@ function parseResponseLine(wmpLine) {
             });
             break;
         default:
-            var parts = segments[1].split(",");
+            let parts = segments[1].split(",");
             Object.assign(rv, {
                 "feature": parts[0],
                 "value": parts[1]
@@ -55,11 +55,11 @@ function parseResponseLine(wmpLine) {
 const DISCOVER_PREFIX = "DISCOVER:"
 
 module.exports = {
-    discover: function(timeout, callback) {
-        var dgram = require('dgram');
+    discover: function (timeout, callback) {
+        let dgram = require('dgram');
 
-        var message = Buffer.from("DISCOVER\r\n");
-        var client = dgram.createSocket("udp4");
+        let message = Buffer.from("DISCOVER\r\n");
+        let client = dgram.createSocket("udp4");
         client.bind(3310);
         client.on("message", function (msg, rinfo) {
             debug("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
@@ -75,29 +75,29 @@ module.exports = {
                 });
             }
         });
-         
+
         client.on("listening", function () {
-            var address = client.address();
+            let address = client.address();
             debug("server listening " + address.address + ":" + address.port);
             client.setBroadcast(true);
             client.send(message, 0, message.length, 3310, "255.255.255.255");
         });
 
-        setTimeout(function(){
+        setTimeout(function () {
             client.close();
         }, timeout);
     },
-    connect: function(ip) /* Promise(mac) */ {
-        
-        var nextCallback = null;
-        var client = new net.Socket();
-        var mac;
-        
-        client.on('data', function(data){
+    connect: function (ip) /* Promise(mac) */ {
 
-            var wmpdata = parseResponseLines(data.toString())
+        let nextCallback = null;
+        let client = new net.Socket();
+        let mac;
 
-            for(let i = 0; i < wmpdata.length; i++) {
+        client.on('data', function (data) {
+
+            let wmpdata = parseResponseLines(data.toString())
+
+            for (let i = 0; i < wmpdata.length; i++) {
                 if (wmpdata[i].type != "CHN") {
                     if (nextCallback === null) {
                         console.error("Received message without callback: " + wmpdata[i])
@@ -108,12 +108,12 @@ module.exports = {
                 }
             }
         });
-        
-        var on = function(event, callback) {
+
+        let on = function (event, callback) {
             if (event == "update") {
-                client.on('data', function(data){
+                client.on('data', function (data) {
                     var wmpdata = parseResponseLines(data.toString())
-                    for(let i = 0; i < wmpdata.length; i++) {
+                    for (let i = 0; i < wmpdata.length; i++) {
                         if (wmpdata[i].type == "CHN") {
                             callback(wmpdata[i]);
                         }
@@ -123,50 +123,50 @@ module.exports = {
                 client.on('close', callback);
             }
         };
-        
-        var id = function() {
+
+        let id = function () {
             return sendCmd('ID')
         };
-        
-        var info = function() {
+
+        let info = function () {
             return sendCmd('INFO')
         };
-        
-        var get = function(feature) {
+
+        let get = function (feature) {
             //todo: sanitise feature param
             sendCmd("GET,1:" + feature);
         };
-        
-        var set = function(feature, value) {
+
+        let set = function (feature, value) {
             //todo: sanitise feature & value params
 
             //convert decimal to 10x temp numbers
-            if(feature.toUpperCase() == "SETPTEMP")
+            if (feature.toUpperCase() == "SETPTEMP")
                 value = value * 10;
 
-            sendCmd("SET,1:" + feature + "," + value).then(function(data){
-                if(data.type != "ACK")
+            sendCmd("SET,1:" + feature + "," + value).then(function (data) {
+                if (data.type != "ACK")
                     console.error("Received non-ack message from set command: " + JSON.stringify(data))
             });
         };
-        
-        var sendCmd = function(cmd) {
-            return new Promise(function(resolve, reject){
+
+        let sendCmd = function (cmd) {
+            return new Promise(function (resolve, reject) {
                 nextCallback = resolve;
                 client.write(cmd + '\n');
             })
         };
-    
+
         //reconnect on close
-        client.on('close', function(e) {
-            client.setTimeout(5000, function() {
+        client.on('close', function (e) {
+            client.setTimeout(5000, function () {
                 client.connect(3310, ip);
             })
         });
-        
-        return new Promise(function(resolve, reject) {
-            client.connect(3310, ip, function(){
-                id().then(function(data){
+
+        return new Promise(function (resolve, reject) {
+            client.connect(3310, ip, function () {
+                id().then(function (data) {
                     mac = data.mac;
                     resolve({
                         on: on,

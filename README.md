@@ -12,7 +12,9 @@ npm install
 ```
 
 # Usage
-`node app.js --mqtt [mqtt url] --wmp [ip address(,ip address,...)]`
+`node app.js [--discover] --mqtt [mqtt url] [--wmp ip address(,ip address,...)]`
+
+Discovery will use IPv4 broadcast to try to detect and connect to all WMP devices on the subnet.
 
 Updates will be provided in the MQTT topic: `/stat/hvac/intesis/[Intesis MAC Address]/settings/[feature]` with the payload as the value.
 For example: `/stat/hvac/intesis/00000000/settings/ONOFF` with payload as `OFF`

@@ -30,7 +30,7 @@ function parseResponseLine(wmpLine) {
         case "ACK":
             break;
         case "ID":
-            let parts = segments[1].split(",");
+            var parts = segments[1].split(",");
             Object.assign(rv, {
                 "model": parts[0],
                 "mac": parts[1],
@@ -41,7 +41,7 @@ function parseResponseLine(wmpLine) {
             });
             break;
         default:
-            let parts = segments[1].split(",");
+            var parts = segments[1].split(",");
             Object.assign(rv, {
                 "feature": parts[0],
                 "value": parts[1]

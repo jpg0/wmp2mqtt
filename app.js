@@ -37,7 +37,7 @@ mqttClient.on('connect', function(connack){
 var runWMP2Mqtt = function(mqttClient, wmpclient){
     wmpclient.on('update', function(data){
         logger.debug('Sending to MQTT: ' + JSON.stringify(data));
-        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature, data.value.toString())
+        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), data.value.toString().toLowerCase())
     });
 }
 

@@ -50,7 +50,7 @@ function parseResponseLine(wmpLine) {
     }
 
     if (rv.type === "CHN")
-        if (rv.feature === "AMBTMP" || rv.feature === "SETPTEMP")
+        if (rv.feature === "AMBTEMP" || rv.feature === "SETPTEMP")
             rv.value = rv.value / 10;
 
     return rv;

@@ -132,10 +132,22 @@ supplied_intesis_ips.map(function (ip) {
     wmpConnect(ip);
 });
 
-if (argv.discover) {
+const DISCOVER_WAIT = 10; //seconds
+
+let doDiscover = function() {
     wmp.discover(1000, function (data) {
+        logger.info("Discovered")
         wmpConnect(data.ip);
-    })
+    });
+
+    if(Object.keys(macToClient).length === 0) {
+        logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
+        setTimeout(doDiscover, DISCOVER_WAIT * 1000)
+    } 
+}
+
+if (argv.discover) {
+    doDiscover();
 };
 
 

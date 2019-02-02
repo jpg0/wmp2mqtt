@@ -138,12 +138,12 @@ let doDiscover = function() {
     wmp.discover(1000, function (data) {
         logger.info("Discovered")
         wmpConnect(data.ip);
+    }, function(){
+        if(Object.keys(macToClient).length === 0) {
+            logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
+            setTimeout(doDiscover, DISCOVER_WAIT * 1000)
+        } 
     });
-
-    if(Object.keys(macToClient).length === 0) {
-        logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
-        setTimeout(doDiscover, DISCOVER_WAIT * 1000)
-    } 
 }
 
 if (argv.discover) {

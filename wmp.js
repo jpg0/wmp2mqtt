@@ -59,7 +59,7 @@ function parseResponseLine(wmpLine) {
 const DISCOVER_PREFIX = "DISCOVER:"
 
 module.exports = {
-    discover: function (timeout, callback) {
+    discover: function (timeout, callback, timedOutCallback) {
         let dgram = require('dgram');
 
         let message = Buffer.from("DISCOVER\r\n");
@@ -89,6 +89,9 @@ module.exports = {
 
         setTimeout(function () {
             client.close();
+            if(timedOutCallback) {
+                timedOutCallback();
+            }
         }, timeout);
     },
     connect: function (ip) /* Promise(mac) */ {

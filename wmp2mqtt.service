@@ -4,9 +4,9 @@ After=network.target
 
 [Service]
 WorkingDirectory=/opt/wmp2mqtt
-ExecStart=/usr/bin/node app.js
+ExecStart=/usr/bin/node app.js --mqtt mqtt://localhost --discover
 Restart=on-failure
-User=openhabian
+User=openhab
 
 [Install]
 WantedBy=multi-user.target

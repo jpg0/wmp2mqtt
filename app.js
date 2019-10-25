@@ -17,9 +17,9 @@ if (argv.wmp) {
 
 const mqtt_url = argv.mqtt;
 
-var winston = require('winston')
+var winston = require('winston');
 
-const logger = require('winston').createLogger({
+const logger = winston.createLogger({
     level: 'debug',
     format: winston.format.combine(
         winston.format.splat(),
@@ -29,8 +29,6 @@ const logger = require('winston').createLogger({
         new winston.transports.Console()
     ]
 });
-
-Object.assign({}, {});
 
 const mqtt = require('mqtt')
 const wmp = require('./wmp');

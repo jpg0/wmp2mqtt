@@ -29,6 +29,8 @@ function parseResponseLine(wmpLine) {
     switch (type) {
         case "ACK":
             break;
+        case "ERR":
+            break;
         case "ID":
             var parts = segments[1].split(",");
             Object.assign(rv, {

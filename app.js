@@ -117,7 +117,8 @@ let wmpConnect = function (ip) {
         logger.info("Connected to WMP at IP " + ip + " with MAC " + wmpclient.mac);
 
         wmpclient.on('close', function () {
-            logger.warn('WMP Connection closed');
+            logger.warn('WMP Connection closed! Closing MQTT connection and exiting...');
+            mqttClient.end(false, {}, () => process.exit(-1));
         });
 
         macToClient[wmpclient.mac] = wmpclient

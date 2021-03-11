@@ -107,6 +107,22 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
                 break;
         }
     })
+
+    let keepalive = setInterval(function() {
+        try {
+            let wmpclients = Object.keys(wmpclientMap)
+            wmpclients.forEach(function(mac) {
+                logger.info("keepalive: keeping alive MAC " + mac)
+                let wmpclient = wmpclientMap[mac];
+                wmpclient.id().then(function (data) {
+                    //todo: something useful with keepalive?
+                });
+            });
+        } catch (err) {
+            logger.warn(err);
+            logger.warn("Failure in keepalive (connection dead?)");
+        }
+    }, 30000);
 }
 
 var macToClient = {};

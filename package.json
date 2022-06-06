@@ -9,11 +9,11 @@
   "author": "",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "debug": "^4.3.1",
+    "debug": "^4.3.4",
     "homie-device": "3.0.1",
-    "mqtt": "^2.18.8",
-    "mqtt-packet": "^7.0.0",
-    "winston": "^3.3.3",
-    "yargs": "^12.0.5"
+    "mqtt": "^4.3.7",
+    "mqtt-packet": "^7.1.2",
+    "winston": "^3.7.2",
+    "yargs": "^17.5.1"
   }
 }

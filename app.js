@@ -5,7 +5,7 @@ const MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 const MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
 const argv = require('yargs')
-    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--wmp ip address(,ip address,...)]')
+    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--wmp ip address(,ip address,...)] [--retain [true/false]]')
     .demandOption(['mqtt'])
     .argv;
 
@@ -14,6 +14,8 @@ let supplied_intesis_ips = [];
 if (argv.wmp) {
     supplied_intesis_ips = argv.wmp.split(',');
 }
+
+let retain_flag = (argv.retain === "true") ? true:false;
 
 const mqtt_url = argv.mqtt;
 
@@ -45,7 +47,7 @@ mqttClient.on('connect', function (connack) {
 let runWMP2Mqtt = function (mqttClient, wmpclient) {
     wmpclient.on('update', function (data) {
         logger.debug('Sending to MQTT: ' + JSON.stringify(data));
-        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), data.value.toString().toLowerCase())
+        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), data.value.toString().toLowerCase(), {retain:retain_flag})
     });
 }
 
@@ -90,13 +92,13 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
             case "ID":
                 wmpclient.id().then(function (data) {
                     logger.debug("published to mqtt: %", JSON.stringify(data))
-                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
+				mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), {retain:retain_flag})
                 });
                 break;
             case "INFO":
                 wmpclient.info().then(function (data) {
                     logger.debug("published to mqtt: %", JSON.stringify(data))
-                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data))
+                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), {retain:retain_flag})
                 });
                 break;
             case "GET":

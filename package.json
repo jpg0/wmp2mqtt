@@ -4,21 +4,15 @@
   "description": "Bridge Intesis WMP to MQTT",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "preinstall": "npx npm-force-resolutions"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "GPL-3.0-only",
   "dependencies": {
     "debug": "^4.3.4",
-    "glob-parent": "^6.0.2",
-    "homie-device": "3.0.1",
     "mqtt": "^4.3.7",
-    "mqtt-packet": ">=7.1.2",
+    "mqtt-packet": "^7.1.2",
     "winston": "^3.7.2",
     "yargs": "^17.5.1"
-  },
-"resolutions": {
-    "glob-parent": "^6.0.2"
   }
 }

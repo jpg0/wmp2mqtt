@@ -13,7 +13,7 @@
     "homie-device": "3.0.1",
     "mqtt": "^4.3.7",
     "mqtt-packet": "^7.1.2",
-    "winston": "^3.3.3",
+    "winston": "^3.7.2",
     "yargs": "^17.5.1"
   }
 }

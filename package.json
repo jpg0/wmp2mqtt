@@ -10,7 +10,6 @@
   "license": "GPL-3.0-only",
   "dependencies": {
     "debug": "^4.3.4",
-    "homie-device": "3.0.1",
     "mqtt": "^4.3.7",
     "mqtt-packet": "^7.1.2",
     "winston": "^3.7.2",

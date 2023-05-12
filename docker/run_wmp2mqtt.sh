@@ -30,6 +30,15 @@ fi
 
 ARGS="${ARGS} --mqtt ${MQTT_SERVER}"
 
+if ! [ "${MQTT_USER}" = "" ]
+then
+    ARGS="${ARGS} --mqttuser ${MQTT_USER}"
+fi
+if ! [ "${MQTT_PASS}" = "" ]
+then
+    ARGS="${ARGS} --mqttpass ${MQTT_PASS}"
+fi
+
 while node app.js $ARGS; do
     echo "WMP2MQTT failed, restarting..."
 done

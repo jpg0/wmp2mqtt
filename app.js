@@ -5,7 +5,7 @@ const MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 const MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
 const argv = require('yargs')
-    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--wmp ip address(,ip address,...)] [--retain [true/false]]')
+    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--mqttuser user --mqttpass pass] [--wmp ip address(,ip address,...)] [--retain [true/false]]')
     .demandOption(['mqtt'])
     .argv;
 
@@ -32,11 +32,19 @@ const logger = winston.createLogger({
     ]
 });
 
+const options = {}
+if (argv.mqttuser && argv.mqttpass) {
+    options.username = argv.mqttuser
+    options.password = argv.mqttpass
+}
+
+console.log('options', { options })
+
 const mqtt = require('mqtt')
 const wmp = require('./wmp');
 
 //todo detect connection failures
-let mqttClient = mqtt.connect(mqtt_url)
+let mqttClient = mqtt.connect(mqtt_url, options)
 mqttClient.on('error', function (error) {
     logger.error("Error from mqtt broker: %v", error)
 });
@@ -119,6 +127,7 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
                 wmpclient.id().then(function (data) {
                     //todo: something useful with keepalive?
                 });
+
             });
         } catch (err) {
             logger.warn(err);

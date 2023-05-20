@@ -4,7 +4,9 @@
   "description": "Bridge Intesis WMP to MQTT",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "docker build -f docker/amd64/Dockerfile -t ghcr.io/timbailey99/wmp2mqtt .",
+    "docker:push": "docker push ghcr.io/timbailey99/wmp2mqtt"
   },
   "author": "",
   "license": "GPL-3.0-only",

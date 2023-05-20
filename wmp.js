@@ -103,7 +103,7 @@ module.exports = {
         let mac;
 
         client.on('data', function (data) {
-
+            console.debug('Got WMP data', { data: data.toString('utf-8')})
             let wmpdata = parseResponseLines(data.toString())
 
             for (let i = 0; i < wmpdata.length; i++) {

@@ -15,7 +15,11 @@ if (argv.wmp) {
     supplied_intesis_ips = argv.wmp.split(',');
 }
 
-let retain_flag = (argv.retain === "true") ? true:false;
+const state = {}
+
+
+let retain_flag = argv.retain ?? false
+console.log('RETAIN?', retain_flag)
 
 const mqtt_url = argv.mqtt;
 
@@ -54,8 +58,30 @@ mqttClient.on('connect', function (connack) {
 
 let runWMP2Mqtt = function (mqttClient, wmpclient) {
     wmpclient.on('update', function (data) {
-        logger.debug('Sending to MQTT: ' + JSON.stringify(data));
-        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), data.value.toString().toLowerCase(), {retain:retain_flag})
+        logger.debug('Update', data);
+
+        state[data.feature.toLowerCase()] = data.value.toString().toLowerCase()
+
+        if (data.feature.toLowerCase() === 'onoff') {
+            if (data.value.toLowerCase() === 'off') {
+                mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/mode", "off", { retain: retain_flag })
+                logger.debug('Publish', { topic: MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/mode", payload: "off" })
+
+                return
+            }
+        } 
+
+        // Dont publish any mode values if the ONOFF is off
+        if(data.feature.toLowerCase() === 'mode') {
+            if(state.onoff === 'off') {
+                logger.debug('Publish - Ignored')
+                return
+            }
+        }
+
+        mqttClient.publish(MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), data.value.toString().toLowerCase(), { retain: retain_flag })
+        logger.debug('Publish', { topic: MQTT_STATE_TOPIC + "/" + wmpclient.mac + "/settings/" + data.feature.toLowerCase(), payload: data.value.toString().toLowerCase() })
+
     });
 }
 
@@ -64,6 +90,9 @@ let parseCommand = function (topic, payload) {
     let rv = {};
     //strip prefix and split
     let parts = topic.substr(MQTT_COMMAND_TOPIC.length).replace(/^\/+/g, '').split("/");
+
+    payload = payload.toString('utf-8')
+
 
     rv['mac'] = parts[0];
 
@@ -81,6 +110,7 @@ let parseCommand = function (topic, payload) {
             rv['command'] = parts[1];
     }
 
+    console.log('parseCommand', { topic, payload: JSON.stringify(payload), parts, rv })
     return rv;
 }
 
@@ -100,31 +130,42 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
             case "ID":
                 wmpclient.id().then(function (data) {
                     logger.debug("published to mqtt: %", JSON.stringify(data))
-				mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), {retain:retain_flag})
+                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), { retain: retain_flag })
                 });
                 break;
             case "INFO":
                 wmpclient.info().then(function (data) {
                     logger.debug("published to mqtt: %", JSON.stringify(data))
-                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), {retain:retain_flag})
+                    mqttClient.publish(MQTT_STATE_TOPIC, JSON.stringify(data), { retain: retain_flag })
                 });
                 break;
             case "GET":
                 wmpclient.get(cmd.feature);
                 break;
             case "SET":
-                wmpclient.set(cmd.feature, cmd.value);
+                // Override SET MODE off to SET ONOFF OFF
+                if (cmd.feature.toLowerCase() === 'mode') {
+                    if(cmd.value.toLowerCase() === 'off') {
+                      wmpclient.set('ONOFF', 'OFF');
+                    } else {
+                        wmpclient.set('ONOFF', 'ON');
+                        wmpclient.set('MODE', cmd.value);
+                    }
+                } else {
+                    wmpclient.set(cmd.feature, cmd.value);
+                }
+
                 break;
         }
     })
 
-    let keepalive = setInterval(function() {
+    let keepalive = setInterval(function () {
         try {
             let wmpclients = Object.keys(wmpclientMap)
-            wmpclients.forEach(function(mac) {
+            wmpclients.forEach(function (mac) {
                 logger.info("keepalive: keeping alive MAC " + mac)
                 let wmpclient = wmpclientMap[mac];
-                wmpclient.id().then(function (data) {
+                wmpclient.get('*').then(function (data) {
                     //todo: something useful with keepalive?
                 });
 
@@ -160,15 +201,15 @@ supplied_intesis_ips.map(function (ip) {
 
 const DISCOVER_WAIT = 10; //seconds
 
-let doDiscover = function() {
+let doDiscover = function () {
     wmp.discover(1000, function (data) {
         logger.info("Discovered")
         wmpConnect(data.ip);
-    }, function(){
-        if(Object.keys(macToClient).length === 0) {
+    }, function () {
+        if (Object.keys(macToClient).length === 0) {
             logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
             setTimeout(doDiscover, DISCOVER_WAIT * 1000)
-        } 
+        }
     });
 }
 

@@ -11,7 +11,7 @@
   "dependencies": {
     "debug": "^4.3.4",
     "mqtt": "^4.3.7",
-    "mqtt-packet": "^8.1.2",
+    "mqtt-packet": "^8.2.0",
     "winston": "^3.8.2",
     "yargs": "^17.7.2"
   }

@@ -165,9 +165,12 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
             wmpclients.forEach(function (mac) {
                 logger.info("keepalive: keeping alive MAC " + mac)
                 let wmpclient = wmpclientMap[mac];
-                wmpclient.get('*').then(function (data) {
-                    //todo: something useful with keepalive?
-                });
+                logger.debug("wmpclient keepalive")
+                wmpclient.get('*')
+                //('*').then(function (data) {
+                //    //todo: something useful with keepalive?
+                //    logger.debug('wmpclient get *')
+                //});
 
             });
         } catch (err) {

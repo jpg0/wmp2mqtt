@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "docker:build": "docker build -f docker/amd64/Dockerfile -t ghcr.io/timbailey99/wmp2mqtt .",
-    "docker:push": "docker push ghcr.io/timbailey99/wmp2mqtt"
+    "docker:push": "docker push ghcr.io/timbailey99/wmp2mqtt",
+    "run": "node app.js --mqtt mqtt://mqtt.bailey9.com --mqttuser iot --mqttpass w4kz7nB6ACw5rp --wmp 192.168.100.14"
   },
   "author": "",
   "license": "GPL-3.0-only",

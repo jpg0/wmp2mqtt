@@ -60,7 +60,18 @@ function parseResponseLine(wmpLine) {
 
 const DISCOVER_PREFIX = "DISCOVER:"
 
+// Helper functions exposed for testing
+function parseResponseLineForTest(wmpLine) {
+    return parseResponseLine(wmpLine);
+}
+
+function parseResponseLinesForTest(wmpString) {
+    return parseResponseLines(wmpString);
+}
+
 module.exports = {
+    parseResponseLineForTest: parseResponseLineForTest,
+    parseResponseLinesForTest: parseResponseLinesForTest,
     discover: function (timeout, callback, timedOutCallback) {
         let dgram = require('dgram');
 

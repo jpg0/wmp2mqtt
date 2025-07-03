@@ -4,15 +4,18 @@
   "description": "Bridge Intesis WMP to MQTT",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "author": "",
   "license": "GPL-3.0-only",
   "dependencies": {
     "debug": "^4.3.4",
-    "mqtt": "^4.3.7",
-    "mqtt-packet": "^8.1.2",
+    "mqtt": "^5.13.1",
+    "mqtt-packet": "^9.0.2",
     "winston": "^3.8.2",
-    "yargs": "^17.7.2"
+    "yargs": "^18.0.0"
+  },
+  "devDependencies": {
+    "jest": "^30.0.4"
   }
 }

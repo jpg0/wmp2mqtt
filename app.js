@@ -4,21 +4,14 @@ const MQTT_TOPIC = "/hvac/intesis"
 const MQTT_STATE_TOPIC = "/stat" + MQTT_TOPIC
 const MQTT_COMMAND_TOPIC = "/cmnd" + MQTT_TOPIC
 
-const argv = require('yargs')
-    .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--mqttuser user --mqttpass pass] [--wmp ip address(,ip address,...)] [--retain [true/false]]')
-    .demandOption(['mqtt'])
-    .argv;
-
+// Yargs and related variables will be defined inside the main block
+let argv;
 let supplied_intesis_ips = [];
+let retain_flag = false; // Default value
+let options = {}; // Default value
 
-if (argv.wmp) {
-    supplied_intesis_ips = argv.wmp.split(',');
-}
-
-let retain_flag = (argv.retain === "true") ? true:false;
-
-const mqtt_url = argv.mqtt;
-
+const mqtt = require('mqtt'); // Moved to top
+const wmp = require('./wmp'); // Moved to top
 var winston = require('winston');
 
 const logger = winston.createLogger({
@@ -32,25 +25,23 @@ const logger = winston.createLogger({
     ]
 });
 
-const options = {}
-if (argv.mqttuser && argv.mqttpass) {
-    options.username = argv.mqttuser
-    options.password = argv.mqttpass
-}
+// options is declared globally, this section was for initializing it
+// based on argv which is now handled inside the main block.
+// if (argv.mqttuser && argv.mqttpass) {
+//     options.username = argv.mqttuser
+//     options.password = argv.mqttpass
+// }
 
-console.log('options', { options })
-
-const mqtt = require('mqtt')
-const wmp = require('./wmp');
+// console.log('options', { options }) // This was using options potentially before it's properly set by argv
 
 //todo detect connection failures
-let mqttClient = mqtt.connect(mqtt_url, options)
-mqttClient.on('error', function (error) {
-    logger.error("Error from mqtt broker: %v", error)
-});
-mqttClient.on('connect', function (connack) {
-    logger.info("Connected to mqtt broker")
-});
+// let mqttClient = mqtt.connect(mqtt_url, options) // Defined in main block now
+// mqttClient.on('error', function (error) {
+//     logger.error("Error from mqtt broker: %v", error)
+// });
+// mqttClient.on('connect', function (connack) {
+//     logger.info("Connected to mqtt broker")
+// });
 
 let runWMP2Mqtt = function (mqttClient, wmpclient) {
     wmpclient.on('update', function (data) {
@@ -62,8 +53,19 @@ let runWMP2Mqtt = function (mqttClient, wmpclient) {
 let parseCommand = function (topic, payload) {
     // format of commands is /<topic>/<mac>/<area>/<feature> payload (for set only is value
     let rv = {};
-    //strip prefix and split
-    let parts = topic.substr(MQTT_COMMAND_TOPIC.length).replace(/^\/+/g, '').split("/");
+    // Ensure topic processing is consistent whether MQTT_COMMAND_TOPIC has a leading slash or not,
+    // and whether the incoming topic has one or not.
+    let normalizedTopic = topic.startsWith('/') ? topic : '/' + topic;
+    let normalizedCommandTopic = MQTT_COMMAND_TOPIC.startsWith('/') ? MQTT_COMMAND_TOPIC : '/' + MQTT_COMMAND_TOPIC;
+
+    // Strip prefix and split
+    // Ensure we correctly find the start of the actual command part of the topic
+    let commandPart = normalizedTopic;
+    if (normalizedTopic.startsWith(normalizedCommandTopic)) {
+        commandPart = normalizedTopic.substring(normalizedCommandTopic.length);
+    }
+
+    let parts = commandPart.replace(/^\/+/g, '').split("/");
 
     rv['mac'] = parts[0];
 
@@ -138,7 +140,7 @@ var runMqtt2WMP = function (mqttClient, wmpclientMap) {
 
 var macToClient = {};
 
-let wmpConnect = function (ip) {
+let wmpConnect = function (ip, mqttClient) { // Added mqttClient parameter
     //todo: prevent duplicate registrations
     wmp.connect(ip).then(function (wmpclient) {
         logger.info("Connected to WMP at IP " + ip + " with MAC " + wmpclient.mac);
@@ -154,27 +156,76 @@ let wmpConnect = function (ip) {
     })
 };
 
-supplied_intesis_ips.map(function (ip) {
-    wmpConnect(ip);
-});
+// const DISCOVER_WAIT = 10; //seconds // Moved into main block as it's related to execution flow
 
-const DISCOVER_WAIT = 10; //seconds
+// let doDiscover = function(mqttClient) { ... }; // Definition is fine here, but invocation must be in main block
 
-let doDiscover = function() {
-    wmp.discover(1000, function (data) {
-        logger.info("Discovered")
-        wmpConnect(data.ip);
-    }, function(){
-        if(Object.keys(macToClient).length === 0) {
-            logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
-            setTimeout(doDiscover, DISCOVER_WAIT * 1000)
-        } 
+// Only run the app if executed directly
+if (require.main === module) {
+    const DISCOVER_WAIT = 10; //seconds
+
+    // Moved doDiscover definition inside main block as it's part of the execution logic dependent on mqttClient
+    let doDiscover = function(mqttClientArg) {
+        wmp.discover(1000, function (data) {
+            logger.info("Discovered")
+            wmpConnect(data.ip, mqttClientArg);
+        }, function(){
+            if(Object.keys(macToClient).length === 0) {
+                logger.info("Nothing connected, retrying discovery in " + DISCOVER_WAIT + " seconds..");
+                setTimeout(() => doDiscover(mqttClientArg), DISCOVER_WAIT * 1000);
+            }
+        });
+    }
+
+    argv = require('yargs')
+        .usage('Usage: $0 [--discover] --mqtt [mqtt url] [--mqttuser user --mqttpass pass] [--wmp ip address(,ip address,...)] [--retain [true/false]]')
+        .demandOption(['mqtt'])
+        .argv;
+
+    if (argv.wmp) {
+        supplied_intesis_ips = argv.wmp.split(',');
+    }
+
+    retain_flag = (argv.retain === "true") ? true : false;
+
+    // options is already declared in the outer scope with 'let'
+    if (argv.mqttuser && argv.mqttpass) {
+        options.username = argv.mqttuser;
+        options.password = argv.mqttpass;
+    }
+
+    const mqtt_url = argv.mqtt;
+    let mqttClient = mqtt.connect(mqtt_url, options);
+    mqttClient.on('error', function (error) {
+        logger.error("Error from mqtt broker: %v", error);
     });
+    mqttClient.on('connect', function (connack) {
+        logger.info("Connected to mqtt broker")
+    });
+
+    // Execute these only when running the app directly
+    supplied_intesis_ips.map(function (ip) {
+        wmpConnect(ip, mqttClient);
+    });
+
+    if (argv.discover) {
+        doDiscover(mqttClient);
+    }
+
+    runMqtt2WMP(mqttClient, macToClient);
 }
 
-if (argv.discover) {
-    doDiscover();
+// Module exports for testing
+// These lines that were at global scope are removed from here as they are now inside the main check
+// supplied_intesis_ips.map(function (ip) {
+// wmpConnect(ip); // This was problematic
+// });
+// if (argv.discover) { // This was problematic
+// doDiscover(); // This was problematic
+// };
+
+module.exports = {
+    parseCommandForTest: parseCommand,
+    MQTT_COMMAND_TOPIC_FOR_TEST: MQTT_COMMAND_TOPIC,
+    // Export other functions or variables if needed for more tests
 };
-
-
-runMqtt2WMP(mqttClient, macToClient);
